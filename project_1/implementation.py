@@ -24,7 +24,6 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=10
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     for epoch in range(epochs):
-        print(next(model.parameters()).device)
         model.train()
         running_loss = 0.0
         for inputs, labels in train_loader:
