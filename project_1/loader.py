@@ -33,11 +33,11 @@ class PNGDataset(Dataset):
         return image, label
     
 
-def load_png_images(root_dir, batch_size=32):
+def load_png_images(root_dir, batch_size=32,shuffle=True):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
     ])
     dataset = PNGDataset(root_dir, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return dataloader, len(dataset.label_to_idx)

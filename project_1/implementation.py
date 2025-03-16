@@ -24,10 +24,11 @@ class CNNClassifier(nn.Module):
         x = self.fc2(x)
         return x
 
-def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=10):
+def train_model(model, train_loader, val_loader, optimizer, epochs=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     best_val_loss = float('inf')
+    criterion = nn.CrossEntropyLoss()
 
     for epoch in range(epochs):
         model.train()
@@ -64,7 +65,27 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=10
             best_val_loss = val_loss
             torch.save(model.state_dict(), 'models/best_cnn.pth')
         
-    model.load_state_dict(torch.load('models/best_cnn.pth'))
+    model.load_state_dict(torch.load('models/best_cnn.pth', weights_only=True))
     
 
-
+def evaluate(model, test_loader):
+    criterion = nn.CrossEntropyLoss()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+    correct = 0
+    total = 0
+    test_loss = 0.0
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            test_loss += loss.item()
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    
+    test_loss /= len(test_loader)
+    accuracy = 100 * correct / total
+    return test_loss, accuracy
