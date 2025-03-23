@@ -2,18 +2,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 class CNNClassifier(nn.Module):
-    def __init__(self, num_classes, w1 =64, w2 = 128, w3 = 256):
+    def __init__(self, num_classes, w1 =64, w2 = 128, w3 = 256,dropout_rate = 0.2, use_bn= True):
         super(CNNClassifier, self).__init__()
         self.conv1 = nn.Conv2d(3, w1, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(w1, w2, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(w2, w3, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(w1)
-        self.bn2 = nn.BatchNorm2d(w2)
-        self.bn3 = nn.BatchNorm2d(w3)
+        self.bn1 = nn.BatchNorm2d(w1) if use_bn else nn.Identity()
+        self.bn2 = nn.BatchNorm2d(w2) if use_bn else nn.Identity()
+        self.bn3 = nn.BatchNorm2d(w3) if use_bn else nn.Identity()
         self.pool = nn.MaxPool2d(2, 2)
         self.fun = F.relu
         self.fc1 = nn.Linear(w3 * 4 * 4, 128)
-        self.drop =  nn.Dropout(p=0.2)
+        self.drop =  nn.Dropout(p=dropout_rate)
         self.fc2 = nn.Linear(128, num_classes)
     
     def forward(self, x):
@@ -25,13 +25,16 @@ class CNNClassifier(nn.Module):
         x = self.fc2(self.drop(x))
         return x
 
-def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer = True):
+def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer = True, patience = 3):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     best_val_loss = float('inf')
     criterion = nn.CrossEntropyLoss()
-
+    p_counter = 0
     for epoch in range(epochs):
+        if p_counter >= patience:
+            print("Patience triggered. End of learning")
+            break
         model.train()
         running_loss = 0.0
         for inputs, labels in train_loader:
@@ -66,9 +69,11 @@ def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer =
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model = model.state_dict()
-        
+            p_counter=0
+        else:
+            p_counter+=1
+
     model.load_state_dict(best_model)
-    torch.save(model.state_dict(), 'models/best_cnn.pth')
     
 
 def evaluate(model, test_loader):
