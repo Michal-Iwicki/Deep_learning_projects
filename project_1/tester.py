@@ -4,6 +4,7 @@ from loader import load_png_images
 from implementation import CNNClassifier, train_model,evaluate
 import pandas as pd
 import csv
+import os
 import datetime
 
 def save_to_csv(data, filename, column_names):
@@ -13,6 +14,19 @@ def save_to_csv(data, filename, column_names):
         writer = csv.writer(file)
         writer.writerow(column_names)  
         writer.writerows(data)
+
+def aggregate_csv_files(folder_path = "./results"):
+    all_files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
+    dataframes = []
+    
+    for file in all_files:
+        df = pd.read_csv(os.path.join(folder_path, file))
+        group_col = df.columns[0]  
+        aggregated_df = df.groupby(group_col).agg(['mean', 'std']).round(3)
+        aggregated_df.columns = ["_".join(col).lower() for col in aggregated_df.columns]
+        dataframes.append(aggregated_df)
+    
+    return dataframes
 
 def test_batchsizes(times = 5, batchsizes = [8,16,32,64,128]):
     test_loader = load_png_images("data/test_sample", batch_size=1024, shuffle=False)[0] 
@@ -32,7 +46,7 @@ def test_batchsizes(times = 5, batchsizes = [8,16,32,64,128]):
             print(*values)
     save_to_csv(result,"results/batchsize_test.csv", column_names)
 
-def test_lr(times = 5, learning_rates = [0.0001,0.005,0.001,0.005,0.01]):
+def test_lr(times = 5, learning_rates = [0.0001,0.0005,0.001,0.005,0.01]):
     test_loader = load_png_images("data/test_sample", batch_size=1024, shuffle=False)[0] 
     val_loader = load_png_images("data/val_sample", batch_size=1024, shuffle=False)[0] 
     result = []
@@ -55,12 +69,12 @@ def test_dropout(times = 5, dropout_rates = [0,0.2,0.4,0.6,0.8]):
     val_loader = load_png_images("data/val_sample", batch_size=1024, shuffle=False)[0] 
     result = []
     column_names = ["dropout_rate","test_loss","test_accuracy"]
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
     print(*column_names)
     for dr in dropout_rates:
         for i in range(times):
             train_loader, num_classes = load_png_images("data/train_sample", batch_size=32)  
             model = CNNClassifier(num_classes,dropout_rate=dr)
+            optimizer = optim.Adam(model.parameters(), lr=0.001)
             train_model(model, train_loader, val_loader, optimizer, epochs=10,printer = False)
             test_loss, test_acc = evaluate(model, test_loader)
             values = [dr,test_loss,test_acc]
