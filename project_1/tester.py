@@ -8,13 +8,34 @@ import csv
 import os
 import datetime
 
-train_path = os.path.join(os.getcwd(), "data", "sample", "train")
-valid_path = os.path.join(os.getcwd(), "data", "sample", "valid")
-test_path = os.path.join(os.getcwd(), "data", "sample", "test")
+MISZA = False
+SAMPLE = False
 
-# train_path = "data/train_sample"
-# valid_path = "data/val_sample"
-# test_path = "data/test_sample"
+if MISZA:
+    sample_train_path = os.path.join(os.getcwd(), "data", "sample", "train")
+    sample_valid_path = os.path.join(os.getcwd(), "data", "sample", "valid")
+    sample_test_path = os.path.join(os.getcwd(), "data", "sample", "test")
+    
+    full_train_path = os.path.join(os.getcwd(), "data", "full", "train")
+    full_valid_path = os.path.join(os.getcwd(), "data", "full", "valid")
+    full_test_path = os.path.join(os.getcwd(), "data", "full", "test")
+else:
+    sample_train_path = "data/train_sample"
+    sample_valid_path = "data/valid_sample"
+    sample_test_path = "data/test_sample"
+    
+    full_train_path = "data/train"
+    full_valid_path = "data/valid"
+    full_test_path = "data/test"
+
+if SAMPLE:
+    train_path = sample_train_path
+    valid_path = sample_valid_path
+    test_path = sample_test_path
+else:
+    train_path = full_train_path
+    valid_path = full_valid_path
+    test_path = full_test_path
 
 def save_to_csv(data, filename, column_names):
     timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H.%M")
@@ -37,11 +58,11 @@ def aggregate_csv_files(folder_path = "./results"):
     
     return dataframes
 
-def test_batchsizes(times=5, batchsizes=[8, 16, 32, 64, 128]):
+def test_batchsizes(times=3, batchsizes=[16, 32, 64]):
     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     result = []
-    column_names = ["batchsize", "test_loss", "test_accuracy"]
+    column_names = ["batchsize", "train_loss", "train_accuracy", "test_loss", "test_accuracy"]
     print(*column_names)
     for batchsize in batchsizes:
         for i in range(times):
@@ -49,17 +70,18 @@ def test_batchsizes(times=5, batchsizes=[8, 16, 32, 64, 128]):
             model = CNNClassifier(num_classes)
             optimizer = optim.Adam(model.parameters(), lr=0.001)
             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
-            test_loss, test_acc = evaluate(model, test_loader)
-            values = [batchsize, test_loss, test_acc]
+            r_loss, r_acc = evaluate(model, train_loader)
+            t_loss, t_acc = evaluate(model, test_loader)
+            values = [batchsize,r_loss, r_acc,t_loss, t_acc]
             result.append(values)
             print(*values)
     save_to_csv(result, "results/batchsize_test.csv", column_names)
 
-def test_lr(times=5, learning_rates=[0.0001, 0.0005, 0.001, 0.005, 0.01]):
+def test_lr(times=3, learning_rates=[0.0001, 0.001, 0.01]):
     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     result = []
-    column_names = ["learning_rate", "test_loss", "test_accuracy"]
+    column_names = ["learning_rate", "train_loss", "train_accuracy", "test_loss", "test_accuracy"]
     print(*column_names)
     for lr in learning_rates:
         for i in range(times):
@@ -67,17 +89,18 @@ def test_lr(times=5, learning_rates=[0.0001, 0.0005, 0.001, 0.005, 0.01]):
             model = CNNClassifier(num_classes)
             optimizer = optim.Adam(model.parameters(), lr=lr)
             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
-            test_loss, test_acc = evaluate(model, test_loader)
-            values = [lr, test_loss, test_acc]
+            r_loss, r_acc = evaluate(model, train_loader)
+            t_loss, t_acc = evaluate(model, test_loader)
+            values = [lr, r_loss, r_acc, t_loss, t_acc]
             result.append(values)
             print(*values)
     save_to_csv(result, "results/lr_test.csv", column_names)
 
-def test_dropout(times=5, dropout_rates=[0, 0.2, 0.4, 0.6, 0.8]):
+def test_dropout(times=3, dropout_rates=[0.25, 0.5, 0.75]):
     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     result = []
-    column_names = ["dropout_rate", "test_loss", "test_accuracy"]
+    column_names = ["dropout_rate", "train_loss", "train_accuracy", "test_loss", "test_accuracy"]
     print(*column_names)
     for dr in dropout_rates:
         for i in range(times):
@@ -85,31 +108,32 @@ def test_dropout(times=5, dropout_rates=[0, 0.2, 0.4, 0.6, 0.8]):
             model = CNNClassifier(num_classes, dropout_rate=dr)
             optimizer = optim.Adam(model.parameters(), lr=0.001)
             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
-            test_loss, test_acc = evaluate(model, test_loader)
-            values = [dr, test_loss, test_acc]
+            r_loss, r_acc = evaluate(model, train_loader)
+            t_loss, t_acc = evaluate(model, test_loader)
+            values = [dr, r_loss, r_acc, t_loss, t_acc]
             result.append(values)
             print(*values)
     save_to_csv(result, "results/dropout_rate_test.csv", column_names)
 
-def test_batchnorm(times=5):
-    test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
-    val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
-    result = []
-    column_names = ["batch_norm_used", "test_loss", "test_accuracy"]
-    print(*column_names)
-    for use_bn in [True, False]:
-        for i in range(times):
-            train_loader, num_classes = load_png_images(train_path, batch_size=32)
-            model = CNNClassifier(num_classes, use_bn=use_bn)
-            optimizer = optim.Adam(model.parameters(), lr=0.001)
-            train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
-            test_loss, test_acc = evaluate(model, test_loader)
-            values = [use_bn, test_loss, test_acc]
-            result.append(values)
-            print(*values)
-    save_to_csv(result, "results/batch_norm_test.csv", column_names)
+# def test_batchnorm(times=3):
+#     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
+#     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
+#     result = []
+#     column_names = ["batch_norm_used", "test_loss", "test_accuracy"]
+#     print(*column_names)
+#     for use_bn in [True, False]:
+#         for i in range(times):
+#             train_loader, num_classes = load_png_images(train_path, batch_size=32)
+#             model = CNNClassifier(num_classes, use_bn=use_bn)
+#             optimizer = optim.Adam(model.parameters(), lr=0.001)
+#             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
+#             test_loss, test_acc = evaluate(model, test_loader)
+#             values = [use_bn, test_loss, test_acc]
+#             result.append(values)
+#             print(*values)
+#     save_to_csv(result, "results/batch_norm_test.csv", column_names)
 
-def test_augmentation(times=5, transformations={
+def test_augmentation(times=3, transformations={
     "no-transform": [
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.4788952171802521, 0.4722793698310852, 0.43047481775283813], std=[0.24205632507801056, 0.2382805347442627, 0.25874853134155273])
@@ -134,7 +158,7 @@ def test_augmentation(times=5, transformations={
     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     result = []
-    column_names = ["transformation", "test_loss", "test_accuracy"]
+    column_names = ["transformation", "train_loss", "train_accuracy", "test_loss", "test_accuracy"]
     print(*column_names)
     for name, transformation in transformations.items():
         for i in range(times):
@@ -142,9 +166,9 @@ def test_augmentation(times=5, transformations={
             model = CNNClassifier(num_classes)
             optimizer = optim.Adam(model.parameters(), lr=0.001)
             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
-            test_loss, test_acc = evaluate(model, test_loader)
-            values = [name, test_loss, test_acc]
+            r_loss, r_acc = evaluate(model, train_loader)
+            t_loss, t_acc = evaluate(model, test_loader)
+            values = [name, r_loss, r_acc, t_loss, t_acc]
             result.append(values)
             print(*values)
     save_to_csv(result,"results/augmentation_test.csv", column_names)
-    
