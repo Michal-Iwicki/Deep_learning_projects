@@ -43,7 +43,7 @@ def test_batchsizes(times = 3, batchsizes = [16,32,64]):
         for i in range(times):
             train_loader, num_classes = load_png_images(train_path, batch_size=batchsize)  
             model = CNNClassifier(num_classes)
-            optimizer = optim.Adam(model.parameters(), lr=0.001)
+            optimizer = optim.Adam(model.parameters())
             train_model(model, train_loader, val_loader, optimizer, epochs=10,printer = False)
             r_loss, r_acc = evaluate(model, train_loader)
             t_loss, t_acc = evaluate(model, test_loader)
@@ -81,7 +81,7 @@ def test_dropout(times = 3, dropout_rates = [0.25,0.5,0.75]):
         for i in range(times):
             train_loader, num_classes = load_png_images(train_path, batch_size=32)  
             model = CNNClassifier(num_classes,dropout_rate=dr)
-            optimizer = optim.Adam(model.parameters(), lr=0.001)
+            optimizer = optim.Adam(model.parameters())
             train_model(model, train_loader, val_loader, optimizer, epochs=10,printer = False)
             r_loss, r_acc = evaluate(model, train_loader)
             t_loss, t_acc = evaluate(model, test_loader)
@@ -89,6 +89,26 @@ def test_dropout(times = 3, dropout_rates = [0.25,0.5,0.75]):
             result.append(values)
             print(*values)
     save_to_csv(result,"results/dropout_rate_test.csv", column_names)
+
+def test_w_decay(times = 3, weight_decays = [0.001,0.01,0.1]):
+    test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0] 
+    val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0] 
+    result = []
+    column_names = ["weight_decay","train_loss","train_accuracy","test_loss","test_accuracy"]
+    print(*column_names)
+    for wd in weight_decays:
+        for i in range(times):
+            train_loader, num_classes = load_png_images(train_path, batch_size=32)  
+            model = CNNClassifier(num_classes)
+            optimizer = optim.AdamW(model.parameters(), weight_decay=wd)
+            train_model(model, train_loader, val_loader, optimizer, epochs=10,printer = False)
+            r_loss, r_acc = evaluate(model, train_loader)
+            t_loss, t_acc = evaluate(model, test_loader)
+            values = [wd,r_loss, r_acc,t_loss, t_acc]
+            result.append(values)
+            print(*values)
+    save_to_csv(result,"results/weight_decay_test.csv", column_names)
+
 
 # def test_batchnorm(times = 3):
 #     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0] 
