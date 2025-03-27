@@ -1,4 +1,3 @@
-
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import os
@@ -33,12 +32,8 @@ class PNGDataset(Dataset):
         return image, label
     
 
-def load_png_images(root_dir, batch_size=32,shuffle=True, num_workers =2):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        #values computated in side code
-        transforms.Normalize(mean=[0.4788952171802521, 0.4722793698310852, 0.43047481775283813], std=[0.24205632507801056, 0.2382805347442627, 0.25874853134155273])
-    ])
+def load_png_images(root_dir, transform=[transforms.ToTensor(), transforms.Normalize(mean=[0.4788952171802521, 0.4722793698310852, 0.43047481775283813], std=[0.24205632507801056, 0.2382805347442627, 0.25874853134155273])], batch_size=32, shuffle=True, num_workers=2):
+    transform = transforms.Compose(transform)
     dataset = PNGDataset(root_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     return dataloader, len(dataset.label_to_idx)
