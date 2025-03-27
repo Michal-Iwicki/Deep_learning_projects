@@ -115,6 +115,25 @@ def test_dropout(times=3, dropout_rates=[0.25, 0.5, 0.75]):
             print(*values)
     save_to_csv(result, "results/dropout_rate_test.csv", column_names)
 
+def test_w_decay(times=3, w_decays=[0.001,0.01,0.1]):
+    test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
+    val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
+    result = []
+    column_names = ["weight_decay", "train_loss", "train_accuracy", "test_loss", "test_accuracy"]
+    print(*column_names)
+    for w_decay in w_decays:
+        for i in range(times):
+            train_loader, num_classes = load_png_images(train_path, batch_size=32)
+            model = CNNClassifier(num_classes)
+            optimizer = optim.AdamW(model.parameters(), weight_decay=w_decay)
+            train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
+            r_loss, r_acc = evaluate(model, train_loader)
+            t_loss, t_acc = evaluate(model, test_loader)
+            values = [w_decay, r_loss, r_acc, t_loss, t_acc]
+            result.append(values)
+            print(*values)
+    save_to_csv(result, "results/weight_decay_test.csv", column_names)    
+
 # def test_batchnorm(times=3):
 #     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
 #     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
