@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 class CNNClassifier(nn.Module):
-    def __init__(self, num_classes, w1 =64, w2 = 128, w3 = 256,dropout_rate = 0.2, use_bn= True):
+    def __init__(self, num_classes, w1 =64, w2 = 128, w3 = 256,dropout_rate = 0.25, use_bn= True):
         super(CNNClassifier, self).__init__()
         self.conv1 = nn.Conv2d(3, w1, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(w1, w2, kernel_size=3, padding=1)
@@ -25,12 +25,14 @@ class CNNClassifier(nn.Module):
         x = self.fc2(self.drop(x))
         return x
 
-def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer = True, patience = 3):
+def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer = True, patience = 3,tracking = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     best_val_loss = float('inf')
     criterion = nn.CrossEntropyLoss()
     p_counter = 0
+    train_losses=[]
+    val_losses=[]
     for epoch in range(epochs):
         if p_counter >= patience:
             print("Patience triggered. End of learning")
@@ -62,6 +64,9 @@ def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer =
         
         val_loss /= len(val_loader)
         accuracy = 100 * correct / total
+        if tracking:
+            train_losses.append(running_loss/len(train_loader))
+            val_losses.append(val_loss)
         if printer:
             print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(train_loader):.4f}, "
                 f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {accuracy:.2f}%")
@@ -74,7 +79,8 @@ def train_model(model, train_loader, val_loader, optimizer, epochs=10, printer =
             p_counter+=1
 
     model.load_state_dict(best_model)
-    
+    if tracking:
+        return train_losses, val_losses
 
 def evaluate(model, test_loader):
     criterion = nn.CrossEntropyLoss()

@@ -1,12 +1,15 @@
 import torch.optim as optim
 from torchvision import transforms
 import numpy as np
+import torch.nn as nn
 from loader import load_png_images
 from implementation import CNNClassifier, train_model,evaluate
+from torchvision import models
 import pandas as pd
 import csv
 import os
 import datetime
+import matplotlib.pyplot as plt
 
 MISZA = False
 SAMPLE = False
@@ -134,23 +137,93 @@ def test_w_decay(times=3, w_decays=[0.001,0.01,0.1]):
             print(*values)
     save_to_csv(result, "results/weight_decay_test.csv", column_names)    
 
-# def test_batchnorm(times=3):
-#     test_loader = load_png_images(test_path, batch_size=1024, shuffle=False)[0]
-#     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
-#     result = []
-#     column_names = ["batch_norm_used", "test_loss", "test_accuracy"]
-#     print(*column_names)
-#     for use_bn in [True, False]:
-#         for i in range(times):
-#             train_loader, num_classes = load_png_images(train_path, batch_size=32)
-#             model = CNNClassifier(num_classes, use_bn=use_bn)
-#             optimizer = optim.Adam(model.parameters(), lr=0.001)
-#             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
-#             test_loss, test_acc = evaluate(model, test_loader)
-#             values = [use_bn, test_loss, test_acc]
-#             result.append(values)
-#             print(*values)
-#     save_to_csv(result, "results/batch_norm_test.csv", column_names)
+
+def find_best_cnn(w_decays=[0.001,0.01,0.1], lr_rates=[0.0001,0.01,0.1]):
+    val_loader = load_png_images(sample_valid_path, batch_size=1024, shuffle=False)[0]
+    best_loss= float('inf')
+    best_w = 0
+    best_lr=0
+    for w_decay in w_decays:
+        train_loader, num_classes = load_png_images(sample_train_path, batch_size=32)
+        model = CNNClassifier(num_classes)
+        optimizer = optim.AdamW(model.parameters(), weight_decay=w_decay)
+        val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False,tracking=True)[1][-1]
+        if best_loss>val_loss:
+            best_loss = val_loss
+            best_w = w_decay
+            best_model = model.state_dict()
+    for lr in lr_rates:
+        train_loader, num_classes = load_png_images(sample_train_path, batch_size=32)
+        model = CNNClassifier(num_classes)
+        optimizer = optim.AdamW(model.parameters(), lr= lr,weight_decay=best_w)
+        val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False,tracking=True)[1][-1]
+        if best_loss>val_loss:
+            best_lr = lr
+            best_loss = val_loss
+            best_model = model.state_dict()
+    return model.load_state_dict(best_model), best_lr,best_w
+
+def find_best_type(type, w_decays=[0.001,0.01,0.1], lr_rates=[0.0001,0.01,0.1]):#0.001 is default so already tested
+    if type == "DenseNet":
+        model_pre = models.densenet121
+        initial = "DenseNet121_Weights.IMAGENET1K_V1"
+        num_features=model_pre(weights=initial).classifier.in_features
+    else:
+        model_pre= models.wide_resnet50_2
+        initial = "Wide_ResNet50_2_Weights.DEFAULT"
+        num_features=model_pre(weights=initial).fc.in_features
+    val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
+    best_loss= float('inf')
+    best_w = 0
+    best_lr = 0
+    for wd in w_decays:
+        train_loader, num_classes = load_png_images(train_path, batch_size=32)
+        model = model_pre(weights=initial)
+        model.fc = nn.Linear(num_features, num_classes)   
+        optimizer = optim.AdamW(model.parameters(), weight_decay=wd)
+        val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False,tracking=True)[1][-1]
+        if best_loss>val_loss:
+            best_loss = val_loss
+            best_w = wd
+            best_model = model.state_dict()
+    for lr in lr_rates:
+        train_loader, num_classes = load_png_images(train_path, batch_size=32)
+        model = model_pre(weights=initial)
+        model.fc = nn.Linear(num_features, num_classes)   
+        optimizer = optim.AdamW(model.parameters(), lr= lr, weight_decay=best_w)
+        val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False,tracking=True)[1][-1]
+        if best_loss>val_loss:
+            best_loss = val_loss
+            best_lr=lr
+            best_model = model.state_dict()
+    return model.load_state_dict(best_model), best_lr, best_w
+
+
+def plot_training(type, epochs, w_decay, lr):
+    val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
+    train_loader,num_classes = load_png_images(train_path, batch_size=32)
+    if type == "DenseNet":
+        model = models.densenet121(weights="DenseNet121_Weights.IMAGENET1K_V1")
+        model.fc = nn.Linear(model.classifier.in_features, num_classes)   
+    elif type == "WideResNet":
+        model=models.wide_resnet50_2(weights="Wide_ResNet50_2_Weights.DEFAULT")
+        model.fc = nn.Linear(model.fc.in_features, num_classes)   
+    else:
+        model = CNNClassifier(num_classes)
+
+    optimizer = optim.AdamW(model.parameters(), lr= lr,weight_decay=w_decay)
+    train_loss, val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=epochs,patience=epochs, printer=False,tracking=True)
+    plt.figure(figsize=(8, 5))
+    plt.plot(range(1,epochs+1), train_loss, label='Train Loss', marker='o', linestyle='-')
+    plt.plot(range(1,epochs+1), val_loss, label='Validation Loss', marker='s', linestyle='--')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss Over Epochs')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    return model
+
 
 def test_augmentation(times=3, transformations={
     "no-transform": [
@@ -183,7 +256,7 @@ def test_augmentation(times=3, transformations={
         for i in range(times):
             train_loader, num_classes = load_png_images(train_path, transform=transformation, batch_size=32)
             model = CNNClassifier(num_classes)
-            optimizer = optim.Adam(model.parameters(), lr=0.001)
+            optimizer = optim.AdamW(model.parameters())
             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
             r_loss, r_acc = evaluate(model, train_loader)
             t_loss, t_acc = evaluate(model, test_loader)
