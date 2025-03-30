@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 class CNNClassifier(nn.Module):
-    def __init__(self, num_classes, w1 =64, w2 = 128, w3 = 256,dropout_rate = 0.2, use_bn= True):
+    def __init__(self, num_classes, w1 =64, w2 = 128, w3 = 256,dropout_rate = 0.25, use_bn= True):
         super(CNNClassifier, self).__init__()
         
         self.conv1 = nn.Conv2d(3, w1, kernel_size=3, padding=1)
