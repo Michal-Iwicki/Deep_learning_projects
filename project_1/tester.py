@@ -139,12 +139,12 @@ def test_w_decay(times=3, w_decays=[0.001,0.01,0.1]):
 
 
 def find_best_cnn(w_decays=[0.001,0.01,0.1], lr_rates=[0.0001,0.01,0.1]):
-    val_loader = load_png_images(sample_valid_path, batch_size=1024, shuffle=False)[0]
+    val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     best_loss= float('inf')
     best_w = 0
     best_lr=0
     for w_decay in w_decays:
-        train_loader, num_classes = load_png_images(sample_train_path, batch_size=32)
+        train_loader, num_classes = load_png_images(train_path, batch_size=32)
         model = CNNClassifier(num_classes)
         optimizer = optim.AdamW(model.parameters(), weight_decay=w_decay)
         val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False,tracking=True)[1][-1]
@@ -153,7 +153,7 @@ def find_best_cnn(w_decays=[0.001,0.01,0.1], lr_rates=[0.0001,0.01,0.1]):
             best_w = w_decay
             best_model = model.state_dict()
     for lr in lr_rates:
-        train_loader, num_classes = load_png_images(sample_train_path, batch_size=32)
+        train_loader, num_classes = load_png_images(train_path, batch_size=32)
         model = CNNClassifier(num_classes)
         optimizer = optim.AdamW(model.parameters(), lr= lr,weight_decay=best_w)
         val_loss = train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False,tracking=True)[1][-1]
