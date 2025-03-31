@@ -142,7 +142,7 @@ def find_best_cnn(w_decays=[0.001,0.01,0.1], lr_rates=[0.0001,0.01,0.1]):
     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     best_loss= float('inf')
     best_w = 0
-    best_lr=0
+    best_lr=0.001 #default
     for w_decay in w_decays:
         train_loader, num_classes = load_png_images(train_path, batch_size=32)
         model = CNNClassifier(num_classes)
@@ -175,7 +175,7 @@ def find_best_type(type, w_decays=[0.001,0.01,0.1], lr_rates=[0.0001,0.01,0.1]):
     val_loader = load_png_images(valid_path, batch_size=1024, shuffle=False)[0]
     best_loss= float('inf')
     best_w = 0
-    best_lr = 0
+    best_lr = 0.001 #default
     for wd in w_decays:
         train_loader, num_classes = load_png_images(train_path, batch_size=32)
         model = model_pre(weights=initial)
