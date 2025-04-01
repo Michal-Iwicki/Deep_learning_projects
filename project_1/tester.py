@@ -256,7 +256,7 @@ def test_augmentation(times=3, transformations={
         for i in range(times):
             train_loader, num_classes = load_png_images(train_path, transform=transformation, batch_size=32)
             model = CNNClassifier(num_classes)
-            optimizer = optim.AdamW(model.parameters())
+            optimizer = optim.Adam(model.parameters())
             train_model(model, train_loader, val_loader, optimizer, epochs=10, printer=False)
             r_loss, r_acc = evaluate(model, train_loader)
             t_loss, t_acc = evaluate(model, test_loader)

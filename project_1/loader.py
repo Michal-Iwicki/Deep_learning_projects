@@ -31,7 +31,7 @@ class PNGDataset(Dataset):
             image = self.transform(image)
         return image, label
     
-
+# Values of means and std were computed in older version and pasted here.
 def load_png_images(root_dir, transform=[transforms.ToTensor(), transforms.Normalize(mean=[0.4788952171802521, 0.4722793698310852, 0.43047481775283813], std=[0.24205632507801056, 0.2382805347442627, 0.25874853134155273])], batch_size=32, shuffle=True, num_workers=2):
     transform = transforms.Compose(transform)
     dataset = PNGDataset(root_dir, transform=transform)
