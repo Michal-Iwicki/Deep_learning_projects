@@ -3,6 +3,7 @@ import torchaudio
 import torch
 from torchaudio.transforms import MelSpectrogram
 from pathlib import Path
+from torch.utils.data import Dataset
 
 raw_path = os.path.join("data","train","train")
 audio_root = os.path.join(raw_path,"audio")
@@ -23,7 +24,7 @@ def preprocess_and_save_audio_in_tensors(
     with open(val_list_path, 'r') as f:
         val_files = set(line.strip() for line in f if line.strip())
         
-
+    target_length = 16000
     for subdir, _, files in os.walk(audio_root):
         if '_background_noise_' in subdir:
             continue 
@@ -46,9 +47,21 @@ def preprocess_and_save_audio_in_tensors(
             filename = os.path.splitext(os.path.basename(file))[0]
 
             waveform, sr = torchaudio.load(full_path)
-            if sr != 16000:
+
+            if sr != target_length:
                 resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
                 waveform = resampler(waveform)
+
+            current_length = waveform.size(1)
+            
+            if current_length < target_length:
+                # Padding too short samples
+                padding = target_length - current_length
+                waveform = torch.nn.functional.pad(waveform, (0, padding))
+
+            # Cutting to long samples
+            elif current_length > target_length:
+                waveform = waveform[:, :target_length]
 
             mel = mel_transform(waveform)
 
@@ -62,3 +75,28 @@ def preprocess_and_save_audio_in_tensors(
             torch.save(mel, mel_out_path)
 
             print(f"Saved: {rel_path} → {split}")
+
+class TorchTensorFolderDataset(Dataset):
+    def __init__(self, root_dir):
+        self.root_dir = Path(root_dir)
+        self.samples = []
+        self.class_to_idx = {}
+        self._prepare_file_list()
+
+    def _prepare_file_list(self):
+        for class_dir in sorted(self.root_dir.glob("*")):
+            if not class_dir.is_dir():
+                continue
+            class_name = class_dir.name
+            if class_name not in self.class_to_idx:
+                self.class_to_idx[class_name] = len(self.class_to_idx)
+            for file in class_dir.glob("*.pt"):
+                self.samples.append((file, self.class_to_idx[class_name]))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        path, label = self.samples[idx]
+        tensor = torch.load(path, weights_only=True)
+        return tensor, label
