@@ -6,7 +6,7 @@ Implementing custom CNN and comparing to pretrained models based on CINIC-10 dat
 *Further description needed*
 
 # Project 2
-In order to prepare data extract folder with classes into folder train. Ommit data background_noise becouse it is not used for classification. You can store it seperately in /data. Then run function move_audio_files().
+Just unzip train.zip in /data folder and run preprocess_and_save_audio_in_tensors() function. Data are saved as tensors for both raw and spectogram .pt files
 
 # Projecy 3
 
