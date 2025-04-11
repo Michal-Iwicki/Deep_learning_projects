@@ -46,7 +46,7 @@ def preprocess_and_save_audio_in_tensors(
             label = rel_path.split('/')[0]
             filename = os.path.splitext(os.path.basename(file))[0]
 
-            waveform, sr = torchaudio.load(full_path)
+            waveform, sr = torchaudio.load(full_path, num_frames=target_length)
 
             if sr != target_length:
                 resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
@@ -59,9 +59,9 @@ def preprocess_and_save_audio_in_tensors(
                 padding = target_length - current_length
                 waveform = torch.nn.functional.pad(waveform, (0, padding))
 
-            # Cutting to long samples
-            elif current_length > target_length:
-                waveform = waveform[:, :target_length]
+            # # Cutting to long samples
+            # elif current_length > target_length:
+            #     waveform = waveform[:, :target_length]
 
             mel = mel_transform(waveform)
 
