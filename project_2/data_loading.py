@@ -1,22 +1,21 @@
 import os
-import torchaudio
-import torch
-from torchaudio.transforms import MelSpectrogram
 from pathlib import Path
-from torch.utils.data import Dataset
 
-raw_path = os.path.join("data","train","train")
-audio_root = os.path.join(raw_path,"audio")
-test_list_path = os.path.join(raw_path,'testing_list.txt')
-val_list_path = os.path.join(raw_path,'validation_list.txt')
+import torch
+import torchaudio
+from torch.utils.data import Dataset
+from torchaudio.transforms import MelSpectrogram
+
+raw_path = os.path.join("data", "train", "train")
+audio_root = os.path.join(raw_path, "audio")
+test_list_path = os.path.join(raw_path, 'testing_list.txt')
+val_list_path = os.path.join(raw_path, 'validation_list.txt')
 output_root = os.path.join("data", "preprocessed")
 
-#Propably need to run this line once 
-#torchaudio.set_audio_backend("soundfile")
-
-def preprocess_and_save_audio_in_tensors(
-        # Placeholder for preprocessing parameters
-):
+# Placeholder for preprocessing parameters
+def preprocess_and_save_audio_in_tensors():
+    counter = 0
+    
     mel_transform = MelSpectrogram(n_mels=64)
 
     with open(test_list_path, 'r') as f:
@@ -46,7 +45,7 @@ def preprocess_and_save_audio_in_tensors(
             label = rel_path.split('/')[0]
             filename = os.path.splitext(os.path.basename(file))[0]
 
-            waveform, sr = torchaudio.load(full_path, num_frames=target_length)
+            waveform, sr = torchaudio.load(full_path, num_frames=target_length, backend='soundfile')
 
             if sr != target_length:
                 resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
@@ -59,7 +58,7 @@ def preprocess_and_save_audio_in_tensors(
                 padding = target_length - current_length
                 waveform = torch.nn.functional.pad(waveform, (0, padding))
 
-            # # Cutting to long samples
+            # # Cutting too long samples
             # elif current_length > target_length:
             #     waveform = waveform[:, :target_length]
 
@@ -74,7 +73,14 @@ def preprocess_and_save_audio_in_tensors(
             torch.save(waveform, raw_out_path)
             torch.save(mel, mel_out_path)
 
-            print(f"Saved: {rel_path} → {split}")
+            counter += 1
+
+            if counter == 10000:
+                print("10 000 files proccessed")
+                counter = 0
+                
+            # print(f"Saved: {rel_path} → {split}")
+            
 
 class TorchTensorFolderDataset(Dataset):
     def __init__(self, root_dir):
@@ -99,4 +105,54 @@ class TorchTensorFolderDataset(Dataset):
     def __getitem__(self, idx):
         path, label = self.samples[idx]
         tensor = torch.load(path, weights_only=True)
+        
         return tensor, label
+
+
+class EnsembleDataset(Dataset):
+    def __init__(self, path_to_raw, path_to_mel):
+        self.raw_dir = Path(path_to_raw)
+        self.mel_dir = Path(path_to_mel)
+
+        self.labels = {}
+
+        self.samples = []
+
+        self.__prepare_file_list()
+
+        return
+
+    def __prepare_file_list(self):
+        # check if equal categories are present
+        assert [d.name for d in self.raw_dir.iterdir()] == [d.name for d in self.mel_dir.iterdir()]
+
+        # iterate over every element
+        for class_dir in self.raw_dir.iterdir():
+            label = class_dir.name
+
+            # if current element is not directory, then skip
+            if not (self.raw_dir / label).is_dir() or not (self.mel_dir / label).is_dir():
+                continue
+
+            # if current category was not encountered yet, add it
+            if label not in self.labels:
+                self.labels[label] = len(self.labels)
+
+            # check if both representations are present
+            assert [x.name for x in (self.raw_dir / label).iterdir()] == [x.name for x in (self.mel_dir / label).iterdir()]
+
+            for x in (self.raw_dir / label).iterdir():
+                self.samples.append(((self.raw_dir / label / x.name, self.mel_dir / label / x.name), self.labels[label]))
+
+        return
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, item):
+        (path_to_raw, path_to_mel), label = self.samples[item]
+
+        raw = torch.load(path_to_raw, weights_only=True)
+        mel = torch.load(path_to_mel, weights_only=True)
+
+        return (raw, mel), label
