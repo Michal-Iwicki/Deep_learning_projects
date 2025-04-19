@@ -16,7 +16,12 @@ output_root = os.path.join("data", "preprocessed")
 def preprocess_and_save_audio_in_tensors():
     counter = 0
     
-    mel_transform = MelSpectrogram(n_mels=64)
+    mel_transform = MelSpectrogram(
+            sample_rate=16000,
+            n_fft=400,
+            hop_length=160,
+            n_mels=64
+        )
 
     with open(test_list_path, 'r') as f:
         test_files = set(line.strip() for line in f if line.strip())
