@@ -12,17 +12,9 @@ test_list_path = os.path.join(raw_path, 'testing_list.txt')
 val_list_path = os.path.join(raw_path, 'validation_list.txt')
 output_root = os.path.join("data", "preprocessed")
 
-# Placeholder for preprocessing parameters
-def preprocess_and_save_audio_in_tensors():
+def preprocess_and_save_audio_in_tensors(denoise = None):
     counter = 0
     
-    mel_transform = MelSpectrogram(
-            sample_rate=16000,
-            n_fft=400,
-            hop_length=160,
-            n_mels=64
-        )
-
     with open(test_list_path, 'r') as f:
         test_files = set(line.strip() for line in f if line.strip())
     with open(val_list_path, 'r') as f:
@@ -63,20 +55,11 @@ def preprocess_and_save_audio_in_tensors():
                 padding = target_length - current_length
                 waveform = torch.nn.functional.pad(waveform, (0, padding))
 
-            # # Cutting too long samples
-            # elif current_length > target_length:
-            #     waveform = waveform[:, :target_length]
-
-            mel = mel_transform(waveform)
-
             raw_out_path = Path(output_root) / "raw" / split / label / f"{filename}.pt"
-            mel_out_path = Path(output_root) / "mel" / split / label / f"{filename}.pt"
 
             raw_out_path.parent.mkdir(parents=True, exist_ok=True)
-            mel_out_path.parent.mkdir(parents=True, exist_ok=True)
 
             torch.save(waveform, raw_out_path)
-            torch.save(mel, mel_out_path)
 
             counter += 1
 
@@ -86,7 +69,6 @@ def preprocess_and_save_audio_in_tensors():
                 
             # print(f"Saved: {rel_path} → {split}")
             
-
 class TorchTensorFolderDataset(Dataset):
     def __init__(self, root_dir):
         self.root_dir = Path(root_dir)
@@ -112,52 +94,3 @@ class TorchTensorFolderDataset(Dataset):
         tensor = torch.load(path, weights_only=True)
         
         return tensor, label
-
-
-class EnsembleDataset(Dataset):
-    def __init__(self, path_to_raw, path_to_mel):
-        self.raw_dir = Path(path_to_raw)
-        self.mel_dir = Path(path_to_mel)
-
-        self.labels = {}
-
-        self.samples = []
-
-        self.__prepare_file_list()
-
-        return
-
-    def __prepare_file_list(self):
-        # check if equal categories are present
-        assert [d.name for d in self.raw_dir.iterdir()] == [d.name for d in self.mel_dir.iterdir()]
-
-        # iterate over every element
-        for class_dir in self.raw_dir.iterdir():
-            label = class_dir.name
-
-            # if current element is not directory, then skip
-            if not (self.raw_dir / label).is_dir() or not (self.mel_dir / label).is_dir():
-                continue
-
-            # if current category was not encountered yet, add it
-            if label not in self.labels:
-                self.labels[label] = len(self.labels)
-
-            # check if both representations are present
-            assert [x.name for x in (self.raw_dir / label).iterdir()] == [x.name for x in (self.mel_dir / label).iterdir()]
-
-            for x in (self.raw_dir / label).iterdir():
-                self.samples.append(((self.raw_dir / label / x.name, self.mel_dir / label / x.name), self.labels[label]))
-
-        return
-
-    def __len__(self):
-        return len(self.samples)
-
-    def __getitem__(self, item):
-        (path_to_raw, path_to_mel), label = self.samples[item]
-
-        raw = torch.load(path_to_raw, weights_only=True)
-        mel = torch.load(path_to_mel, weights_only=True)
-
-        return (raw, mel), label
