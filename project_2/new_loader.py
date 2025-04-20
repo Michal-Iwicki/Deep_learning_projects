@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
-
+import numpy as np
 import torch
 import torchaudio
 from torch.utils.data import Dataset
-from torchaudio.transforms import MelSpectrogram
+from noisereduce import reduce_noise
 
 raw_path = os.path.join("data", "train", "train")
 audio_root = os.path.join(raw_path, "audio")
@@ -12,7 +12,7 @@ test_list_path = os.path.join(raw_path, 'testing_list.txt')
 val_list_path = os.path.join(raw_path, 'validation_list.txt')
 output_root = os.path.join("data", "preprocessed")
 
-def preprocess_and_save_audio_in_tensors(denoise = None):
+def preprocess_and_save_audio_in_tensors(denoise = False):
     counter = 0
     
     with open(test_list_path, 'r') as f:
@@ -54,8 +54,12 @@ def preprocess_and_save_audio_in_tensors(denoise = None):
                 # Padding too short samples
                 padding = target_length - current_length
                 waveform = torch.nn.functional.pad(waveform, (0, padding))
-
-            raw_out_path = Path(output_root) / "raw" / split / label / f"{filename}.pt"
+            if denoise:
+                waveform = reduce_noise(waveform, sr,use_torch=True,device="cuda")
+                waveform = np.nan_to_num(waveform, nan=0)
+                raw_out_path = Path(output_root) / "denoised" / split / label / f"{filename}.pt"
+            else:
+                raw_out_path = Path(output_root) / "raw" / split / label / f"{filename}.pt"
 
             raw_out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -91,6 +95,6 @@ class TorchTensorFolderDataset(Dataset):
 
     def __getitem__(self, idx):
         path, label = self.samples[idx]
-        tensor = torch.load(path, weights_only=True)
+        tensor = torch.load(path, weights_only=False)
         
         return tensor, label
