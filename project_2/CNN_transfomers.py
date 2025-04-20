@@ -78,7 +78,6 @@ class RawAudioTransformer(nn.Module):
             nn.ReLU()
         )
 
-
         # Positional encoding (learned)
         self.pos_embedding = nn.Parameter(torch.randn(1, 2000, transformer_dim))  # assuming ~2000 steps after conv
 
@@ -108,58 +107,6 @@ class RawAudioTransformer(nn.Module):
         x = x.permute(0, 2, 1)  # -> (batch_size, transformer_dim, seq_len)
         x = self.classifier(x)  # -> (batch_size, num_classes)
         return x
-
-
-class RefinedRawAudioTransformer(nn.Module):
-    def __init__(self, num_classes=30, conv_channels=64, transformer_dim=128,
-                 nhead=4, num_layers=4, max_seq_len=2000, dropout=0.1):
-        super(RefinedRawAudioTransformer, self).__init__()
-
-        # CNN backbone
-        self.conv = nn.Sequential(
-            nn.Conv1d(1, conv_channels, kernel_size=16, stride=4, padding=6),
-            nn.BatchNorm1d(conv_channels),
-            nn.ReLU(),
-            nn.Conv1d(conv_channels, transformer_dim, kernel_size=8, stride=2, padding=3),
-            nn.BatchNorm1d(transformer_dim),
-            nn.ReLU()
-        )
-
-        # Positional encoding (learned)
-        self.pos_embedding = nn.Parameter(torch.randn(1, max_seq_len, transformer_dim))
-
-        # Transformer encoder
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=transformer_dim,
-            nhead=nhead,
-            batch_first=True,
-            dim_feedforward=512,
-            dropout=0.1
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-
-        # Simple but better classification head
-        self.classifier = nn.Sequential(
-            nn.AdaptiveAvgPool1d(1),
-            nn.Flatten(),
-            nn.LayerNorm(transformer_dim),
-            nn.Linear(transformer_dim, transformer_dim // 2),
-            nn.ReLU(),
-            nn.Dropout(p=dropout),
-            nn.Linear(transformer_dim // 2, num_classes)
-        )
-
-    def forward(self, x):
-        x = self.conv(x)  # (B, transformer_dim, seq_len)
-        x = x.permute(0, 2, 1)  # (B, seq_len, transformer_dim)
-
-        seq_len = x.size(1)
-        x = x + self.pos_embedding[:, :seq_len, :]
-
-        x = self.transformer(x)
-        x = x.permute(0, 2, 1)  # (B, transformer_dim, seq_len)
-
-        return self.classifier(x)
 
 
 def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  patience=3):
