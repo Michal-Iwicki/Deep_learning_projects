@@ -109,7 +109,7 @@ class TorchTensorFolderDataset(Dataset):
 
     def __getitem__(self, idx):
         path, label = self.samples[idx]
-        tensor = torch.load(path, weights_only=True)
+        tensor = torch.load(path, weights_only=False)
         
         return tensor, label
 
