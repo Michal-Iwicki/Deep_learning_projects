@@ -110,24 +110,23 @@ class RawAudioTransformer(nn.Module):
         return x
 
 
-def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4, patience=3):
+def train_transformer(model, optimizer, train_loader, val_loader, num_epochs=20, patience=3, verbose=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = model.to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.001)
     criterion = torch.nn.CrossEntropyLoss()
 
     best_val_acc = 0.0
     best_model_state = None
     patience_counter = 0
 
-    for epoch in range(epochs):
+    for epoch in range(num_epochs):
         model.train()
         total_loss = 0.0
         correct = 0
         total = 0
 
-        loop = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
+        loop = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}", leave=False)
 
         for x, y in loop:
             x, y = x.to(device), y.to(device)
@@ -162,7 +161,8 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4, patie
 
         val_acc = val_correct / val_total
 
-        print(f"Epoch {epoch + 1}: Train Loss: {avg_loss:.4f} | Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}")
+        if verbose:
+            print(f"Epoch {epoch + 1}: Train Loss: {avg_loss:.4f} | Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}")
 
         if val_acc >= best_val_acc:
             best_val_acc = val_acc
@@ -173,8 +173,9 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4, patie
             if patience_counter >= patience:
                 print(f"Early stopping triggered at epoch {epoch + 1}")
                 break
-
-    print(f"Best Val Acc: {best_val_acc:.4f}")
+    if verbose:
+        print(f"Best Val Acc: {best_val_acc:.4f}")
+        
     if best_model_state:
         model.load_state_dict(best_model_state)
 

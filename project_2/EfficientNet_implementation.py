@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import tqdm
+from tqdm import tqdm
 from torchvision.models import efficientnet_b0
 
 

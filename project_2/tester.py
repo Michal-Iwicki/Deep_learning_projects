@@ -7,10 +7,8 @@ from torch.utils.data import DataLoader
 from new_loader import TorchTensorFolderDataset
 
 
-def get_loader(data_size: str = "sample", denoised: bool = False, use_mel: bool = True, target_data: str = "train",
-               batch_size: int = 32):
-    path = os.path.join(os.getcwd(), "data", "preprocessed", data_size, "denoised" if denoised else "",
-                        "mel" if use_mel else "raw", target_data)
+def get_loader(data_size: str = "sample", denoised: bool = False, use_mel: bool = True, target_data: str = "train", batch_size: int = 32):
+    path = os.path.join(os.getcwd(), "data", "preprocessed", data_size, "denoised" if denoised else "", "mel" if use_mel else "raw", target_data)
 
     dataset = TorchTensorFolderDataset(path)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -30,8 +28,7 @@ def save_to_csv(filename, column_names, data):
     return
 
 
-def test_learning_rates(model, train_model, test_model, times=3, learning_rates=[0.1, 0.01, 0.001],
-                        data_size="sample", denoised=False, use_mel=True):
+def test_learning_rates(model, train_model, test_model, times=3, learning_rates=[0.1, 0.01, 0.001], data_size="sample", denoised=False, use_mel=True):
     val_loader = get_loader(data_size, denoised, use_mel, "validation")
     test_loader = get_loader(data_size, denoised, use_mel, "test")
 
@@ -60,8 +57,7 @@ def test_learning_rates(model, train_model, test_model, times=3, learning_rates=
     return
 
 
-def test_batch_sizes(model, train_model, test_model, times=3, batch_sizes=[16, 32, 64],
-                     data_size="sample", denoised=False, use_mel=True):
+def test_batch_sizes(model, train_model, test_model, times=3, batch_sizes=[16, 32, 64], data_size="sample", denoised=False, use_mel=True):
     val_loader = get_loader(data_size, denoised, use_mel, "validation")
     test_loader = get_loader(data_size, denoised, use_mel, "test")
 
@@ -90,8 +86,7 @@ def test_batch_sizes(model, train_model, test_model, times=3, batch_sizes=[16, 3
     return
 
 
-def test_weights_decays(model, train_model, test_model, times=3, weights_decays=[0.1, 0.5, 0.9],
-                        data_size="sample", denoised=False, use_mel=True):
+def test_weights_decays(model, train_model, test_model, times=3, weights_decays=[0.1, 0.5, 0.9], data_size="sample", denoised=False, use_mel=True):
     val_loader = get_loader(data_size, denoised, use_mel, "validation")
     test_loader = get_loader(data_size, denoised, use_mel, "test")
 
