@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torchaudio
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch import optim
+from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from tqdm import tqdm
+
 
 class Mel_transformer(nn.Module):
     def __init__(self, num_classes=30, n_mels=64, transformer_dim=256, num_heads=4, num_layers=4):
@@ -36,7 +37,7 @@ class Mel_transformer(nn.Module):
             nhead=num_heads,
             dim_feedforward=512,
             dropout=0.1,
-            batch_first=True 
+            batch_first=True
         )
         self.transformer_encoder = TransformerEncoder(encoder_layer, num_layers)
 
@@ -47,25 +48,25 @@ class Mel_transformer(nn.Module):
 
     def forward(self, x):
         # x: (B, 16000)
-        x = self.melspec(x)         # (B, n_mels, T)
-        x = self.db(x)              # (B, n_mels, T)
+        x = self.melspec(x)  # (B, n_mels, T)
+        x = self.db(x)  # (B, n_mels, T)
 
-        x = self.cnn(x)             # (B, 64, n_mels, T)
+        x = self.cnn(x)  # (B, 64, n_mels, T)
         B, C, H, W = x.shape
-        x = x.view(B, C * H, W)     # (B, C*H, T)
-        x = x.permute(0, 2, 1)      # (B, T, C*H)
+        x = x.view(B, C * H, W)  # (B, C*H, T)
+        x = x.permute(0, 2, 1)  # (B, T, C*H)
 
-        x = self.patch_proj(x)      # (B, T, transformer_dim)
+        x = self.patch_proj(x)  # (B, T, transformer_dim)
         x = x + self.pos_embedding[:, :x.size(1), :]
 
         x = self.transformer_encoder(x)  # (B, T, transformer_dim)
-        x = x.mean(dim=1)               # (B, transformer_dim)
+        x = x.mean(dim=1)  # (B, transformer_dim)
 
-        return self.cls_head(x)         # (B, num_classes)
+        return self.cls_head(x)  # (B, num_classes)
 
 
 class RawAudioTransformer(nn.Module):
-    def __init__(self,  num_classes=30, conv_channels=64, transformer_dim=128, nhead=4, num_layers=4):
+    def __init__(self, num_classes=30, conv_channels=64, transformer_dim=128, nhead=4, num_layers=4):
         super(RawAudioTransformer, self).__init__()
 
         # 1D CNN to extract local patterns and reduce sequence length
@@ -83,8 +84,8 @@ class RawAudioTransformer(nn.Module):
 
         # Transformer Encoder
         encoder_layer = nn.TransformerEncoderLayer(d_model=transformer_dim, nhead=nhead, batch_first=True,
-            dim_feedforward=512,
-            dropout=0.1)
+                                                   dim_feedforward=512,
+                                                   dropout=0.1)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # Classification head
@@ -109,11 +110,11 @@ class RawAudioTransformer(nn.Module):
         return x
 
 
-def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  patience=3):
+def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4, patience=3):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+
     model = model.to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=lr,weight_decay=0.001)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.001)
     criterion = torch.nn.CrossEntropyLoss()
 
     best_val_acc = 0.0
@@ -126,7 +127,7 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
         correct = 0
         total = 0
 
-        loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False)
+        loop = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
 
         for x, y in loop:
             x, y = x.to(device), y.to(device)
@@ -147,7 +148,6 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
         train_acc = correct / total
         avg_loss = total_loss / total
 
-
         model.eval()
         val_correct = 0
         val_total = 0
@@ -162,7 +162,7 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
 
         val_acc = val_correct / val_total
 
-        print(f"Epoch {epoch+1}: Train Loss: {avg_loss:.4f} | Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}")
+        print(f"Epoch {epoch + 1}: Train Loss: {avg_loss:.4f} | Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}")
 
         if val_acc >= best_val_acc:
             best_val_acc = val_acc
@@ -171,7 +171,7 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
         else:
             patience_counter += 1
             if patience_counter >= patience:
-                print(f"Early stopping triggered at epoch {epoch+1}")
+                print(f"Early stopping triggered at epoch {epoch + 1}")
                 break
 
     print(f"Best Val Acc: {best_val_acc:.4f}")
@@ -179,6 +179,7 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
         model.load_state_dict(best_model_state)
 
     return model
+
 
 def evaluate_model(model, test_loader):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
