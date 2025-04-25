@@ -110,7 +110,7 @@ class RawAudioTransformer(nn.Module):
         return x
 
 
-def train_transformer(model, optimizer, train_loader, val_loader, num_epochs=20, patience=3, verbose=False):
+def train_transformer(model, optimizer, train_loader, val_loader, num_epochs=10, patience=3, verbose=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = model.to(device)
@@ -208,4 +208,4 @@ def evaluate_model(model, test_loader):
     avg_loss = total_loss / total if total > 0 else 0.0
     accuracy = correct / total if total > 0 else 0.0
 
-    return round(accuracy, 4), round(avg_loss, 4)
+    return round(avg_loss, 4), round(accuracy, 4),
