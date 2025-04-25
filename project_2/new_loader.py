@@ -6,6 +6,7 @@ import torchaudio
 from torch.utils.data import Dataset
 from noisereduce import reduce_noise
 from torchaudio.transforms import MelSpectrogram, AmplitudeToDB
+import random
 
 raw_path = os.path.join("data", "train", "train")
 audio_root = os.path.join(raw_path, "audio")
@@ -96,7 +97,7 @@ def preprocess_and_save_audio_in_tensors(denoise = False):
 
 def preprocess_and_split_noise(
     seed=42,
-    split_ratios=(0.8, 0.1, 0.1)
+    split_ratios=(0.6, 0.2, 0.2)
 ):
     chunk_size = 16000
     all_chunks = []
@@ -120,7 +121,7 @@ def preprocess_and_split_noise(
 
     split_sets = {
         'train': indices[:n_train],
-        'val': indices[n_train:n_train+n_val],
+        'validation': indices[n_train:n_train+n_val],
         'test': indices[n_train+n_val:]
     }
 
@@ -135,6 +136,106 @@ def preprocess_and_split_noise(
 
         print(f"Zapisano {len(split_indices)} fragmentów do {out_dir}")
 
+
+import os
+import random
+import torch
+import torchaudio
+from pathlib import Path
+
+def generate_dataset_with_optional_augmented_sample(
+    split_ratios=(0.6, 0.2, 0.2),
+    denoise = False
+):  
+    chunk_size = 16000
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    mel_transform = MelSpectrogram(
+            sample_rate=16000,
+            n_fft=400,
+            hop_length=160,
+            n_mels=64
+        )
+    toDB= AmplitudeToDB()
+    shifts = [0, chunk_size // 3, 2 * chunk_size // 3]
+    if denoise:
+        out_base =  os.path.join(output_root, "noise", "denoised")
+    else:
+        out_base = os.path.join(output_root, "noise", 'standard')
+
+    def pad_or_crop(waveform, start, size):
+        chunk = waveform[:, start:start + size]
+        if chunk.shape[1] < size:
+            padding = size - chunk.shape[1]
+            chunk = torch.nn.functional.pad(chunk, (0, padding))
+        return chunk
+
+    random.seed(42)
+    torch.manual_seed(42)
+
+    all_chunks = []
+    noise_dir = os.path.join(audio_root, "_background_noise_")
+    #
+    for file in Path(noise_dir).glob("*.wav"):
+        waveform, _ = torchaudio.load(file)
+        waveform = waveform.mean(dim=0, keepdim=True)
+        length = waveform.shape[1]
+
+        for shift in shifts:
+            for start in range(0, length - shift, chunk_size):
+                chunk = pad_or_crop(waveform, start + shift, chunk_size)
+                all_chunks.append(chunk)
+    print(len(all_chunks))
+    #25% new observation from mixing
+    for _ in range(len(all_chunks) // 4):
+        c1, c2 = random.sample(all_chunks, 2)
+        alpha = random.uniform(0.3, 0.7)
+        mixed= (alpha * c1 + (1 - alpha) * c2).clamp(-1.0, 1.0)
+        all_chunks.append(mixed)
+
+    print(len(all_chunks))
+    # 15% of adding new observation with gausian noise with 0.1 std
+    for chunk in all_chunks:
+        if random.random() < 0.15:
+            noise = torch.randn_like(chunk) * 0.1
+            noised = mixed + noise
+            all_chunks.append((noised).clamp(-1.0, 1.0))
+
+    indices = list(range(len(all_chunks)))
+    random.shuffle(indices)
+
+    n_total = len(indices)
+    n_train = int(split_ratios[0] * n_total)
+    n_val = int(split_ratios[1] * n_total)
+
+    split_map = {}
+    for i, idx in enumerate(indices):
+        if i < n_train:
+            split_map[idx] = "train"
+        elif i < n_train + n_val:
+            split_map[idx] = "validation"
+        else:
+            split_map[idx] = "test"
+
+    for idx, waveform in enumerate(all_chunks):
+        split = split_map[idx]
+        if denoise:
+            waveform = reduce_noise(waveform, 16000,use_torch=True,device="cuda")
+            waveform = torch.tensor(waveform)
+            waveform = torch.nan_to_num(waveform,nan=0)
+
+        #mel = torch.tensor(waveform)
+        waveform.to(device)
+        mel = mel_transform(waveform)
+        mel = toDB(mel)
+
+        raw_dir = os.path.join(out_base, "raw", split)
+        mel_dir = os.path.join(out_base, "mel", split)
+        os.makedirs(raw_dir, exist_ok=True)
+        os.makedirs(mel_dir, exist_ok=True)
+        torch.save(waveform, os.path.join(raw_dir, f"waveform_{idx:05d}.pt"))
+        torch.save(mel, os.path.join(mel_dir, f"mel_{idx:05d}.pt"))
+
+    print(len(all_chunks))
 
 
 class TorchTensorFolderDataset(Dataset):
