@@ -179,3 +179,25 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
         model.load_state_dict(best_model_state)
 
     return model
+
+def evaluate_model(model, test_loader, device='cuda'):
+    model.eval()
+    model.to(device)
+
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for batch in test_loader:
+            inputs, labels = batch
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            outputs = model(inputs)  # (B, num_classes)
+            preds = torch.argmax(outputs, dim=1)  # (B,)
+
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+
+    accuracy = correct / total if total > 0 else 0.0
+    return accuracy
