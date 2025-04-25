@@ -164,7 +164,7 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
 
         print(f"Epoch {epoch+1}: Train Loss: {avg_loss:.4f} | Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}")
 
-        if val_acc > best_val_acc:
+        if val_acc >= best_val_acc:
             best_val_acc = val_acc
             best_model_state = model.state_dict()
             patience_counter = 0
@@ -180,24 +180,30 @@ def train_transformer(model, train_loader, val_loader, epochs=20, lr=1e-4,  pati
 
     return model
 
-def evaluate_model(model, test_loader, device='cuda'):
+def evaluate_model(model, test_loader):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
     model.to(device)
+    criterion = torch.nn.CrossEntropyLoss()
 
     correct = 0
     total = 0
+    total_loss = 0.0
 
     with torch.no_grad():
-        for batch in test_loader:
-            inputs, labels = batch
+        for inputs, labels in test_loader:
             inputs = inputs.to(device)
             labels = labels.to(device)
 
             outputs = model(inputs)  # (B, num_classes)
-            preds = torch.argmax(outputs, dim=1)  # (B,)
+            loss = criterion(outputs, labels)
 
+            preds = torch.argmax(outputs, dim=1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
+            total_loss += loss.item() * labels.size(0)
 
+    avg_loss = total_loss / total if total > 0 else 0.0
     accuracy = correct / total if total > 0 else 0.0
-    return accuracy
+
+    return round(accuracy, 4), round(avg_loss, 4)
