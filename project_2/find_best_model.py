@@ -26,7 +26,7 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
             
             # train model
-            train_f(model, optimizer, train_loader, val_loader)
+            train_f(model, optimizer, train_loader, val_loader, num_epochs=15)
             
             
             train_loss, train_acc = test_f(model, train_loader)
@@ -51,7 +51,7 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
             optimizer = optim.AdamW(model.parameters(), lr=best_learning_rate, weight_decay=weights_decay)
             
             # train model
-            train_f(model, optimizer, train_loader, val_loader)
+            train_f(model, optimizer, train_loader, val_loader, num_epochs=15)
             
             train_loss, train_acc = test_f(model, train_loader)
             val_loss, val_acc = test_f(model, val_loader)

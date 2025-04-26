@@ -100,7 +100,7 @@ def train_model(model, optimizer, train_loader, val_loader, num_epochs=20, patie
 
     model.load_state_dict(best_model)
 
-    return train_losses, val_losses
+    return 
 
 
 def test_model(model, test_loader):
