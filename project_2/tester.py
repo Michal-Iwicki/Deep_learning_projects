@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from new_loader import TorchTensorFolderDataset
 
 
-def get_loader(data_size: str = "sample", denoised: bool = False, use_mel: bool = True, target_data: str = "train", batch_size: int = 16):
+def get_loader(data_size: str = "sample", denoised: bool = False, use_mel: bool = True, target_data: str = "train", batch_size: int = 32):
     path = os.path.join(os.getcwd(), "data", "preprocessed", data_size, "denoised" if denoised else "standard", "mel" if use_mel else "raw", target_data)
 
     dataset = TorchTensorFolderDataset(path)
