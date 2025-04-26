@@ -18,6 +18,7 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
     best_learning_rate = 0.001
     best_weights_decay = 0
     columns = ["lr", "train_loss","train_acc", "val_loss","val_acc"]
+    values =[]
     # look for the best learning rate
     for learning_rate in learning_rates:
         for i in range(times):
