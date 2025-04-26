@@ -2,9 +2,22 @@ import csv
 import datetime
 import os
 import torch.optim as optim
+import torch
 from torch.utils.data import DataLoader
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
+from EfficientNet_implementation import get_pretrained_model, train_model, test_model
+from CNN_transfomers_implementation import Mel_transformer, train_transformer, evaluate_model
 from new_loader import TorchTensorFolderDataset
+
+def get_model(model_type):
+    return get_pretrained_model() if model_type == "EfficientNet" else Mel_transformer()
+
+def get_models_functions(model_type):
+    train_f = train_model if model_type == "EfficientNet" else train_transformer
+    test_f = test_model if model_type == "EfficientNet" else evaluate_model
+
+    return train_f, test_f
 
 
 def get_loader(data_size: str = "sample", denoised: bool = False, use_mel: bool = True, target_data: str = "train", batch_size: int = 16):
@@ -28,7 +41,9 @@ def save_to_csv(filename, column_names, data):
     return
 
 
-# def test_learning_rates(model, train_model, test_model, times=3, learning_rates=[0.1, 0.01, 0.001], data_size="sample", denoised=False, use_mel=True):
+# def test_learning_rates(model_type, times=3, learning_rates=[0.1, 0.01, 0.001], data_size="sample", denoised=False, use_mel=True):
+#     train_model, test_model = get_models_functions(model_type)
+
 #     val_loader = get_loader(data_size, denoised, use_mel, "validation")
 #     test_loader = get_loader(data_size, denoised, use_mel, "test")
 
@@ -40,6 +55,7 @@ def save_to_csv(filename, column_names, data):
 #         for _ in range(times):
 #             train_loader = get_loader(data_size, denoised, use_mel, "train")
 
+#             model = get_model(model_type)
 #             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 #             train_model(model, optimizer, train_loader, val_loader, num_epochs=10)
@@ -57,7 +73,9 @@ def save_to_csv(filename, column_names, data):
 #     return
 
 
-# def test_batch_sizes(model, train_model, test_model, times=3, batch_sizes=[16, 32, 64], data_size="sample", denoised=False, use_mel=True):
+# def test_batch_sizes(model_type, times=3, batch_sizes=[16, 32, 64], data_size="sample", denoised=False, use_mel=True):
+#     train_model, test_model = get_models_functions(model_type)
+
 #     val_loader = get_loader(data_size, denoised, use_mel, "validation")
 #     test_loader = get_loader(data_size, denoised, use_mel, "test")
 
@@ -69,6 +87,7 @@ def save_to_csv(filename, column_names, data):
 #         for _ in range(times):
 #             train_loader = get_loader(data_size, denoised, use_mel, "train", batch_size)
 
+#             model = get_model(model_type)
 #             optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 #             train_model(model, optimizer, train_loader, val_loader, num_epochs=10)
@@ -86,7 +105,9 @@ def save_to_csv(filename, column_names, data):
 #     return
 
 
-# def test_weights_decays(model, train_model, test_model, times=3, weights_decays=[0.1, 0.5, 0.9], data_size="sample", denoised=False, use_mel=True):
+# def test_weights_decays(model_type, times=3, weights_decays=[0.1, 0.5, 0.9], data_size="sample", denoised=False, use_mel=True):
+#     train_model, test_model = get_models_functions(model_type)
+
 #     val_loader = get_loader(data_size, denoised, use_mel, "validation")
 #     test_loader = get_loader(data_size, denoised, use_mel, "test")
 
@@ -98,6 +119,7 @@ def save_to_csv(filename, column_names, data):
 #         for _ in range(times):
 #             train_loader = get_loader(data_size, denoised, use_mel, "train")
 
+#             model = get_model(model_type)
 #             optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=weights_decay)
 
 #             train_model(model, optimizer, train_loader, val_loader, num_epochs=10)
@@ -113,3 +135,33 @@ def save_to_csv(filename, column_names, data):
 #     save_to_csv("results/weights_decays_test.csv", column_names, result)
 
 #     return
+
+def get_confusion_matrix(model, test_loader):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model.to(device)
+    model.eval()
+    
+    all_predicted = []
+    all_labels = []
+    
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+    
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            
+            all_predicted.append(predicted)
+            all_labels.append(labels)
+    
+    # Now concatenate all batches into a single tensor
+    all_predicted = torch.cat(all_predicted)
+    all_labels = torch.cat(all_labels)
+
+    cm = confusion_matrix(all_labels, all_predicted)
+    
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(test_loader.dataset.class_to_idx.keys()))
+    disp.plot(cmap='Blues') 
+
+    return
