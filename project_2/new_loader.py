@@ -25,6 +25,10 @@ def preprocess_and_save_audio_in_tensors(denoise=False):
         n_mels=64
     )
     toDB = AmplitudeToDB()
+    if denoise:
+        output_path = os.path.join(output_root, 'denoised')
+    else:
+        output_path = os.path.join(output_root, 'standard')
 
     with open(test_list_path, 'r') as f:
         test_files = set(line.strip() for line in f if line.strip())
@@ -69,9 +73,6 @@ def preprocess_and_save_audio_in_tensors(denoise=False):
                 waveform = reduce_noise(waveform, sr, use_torch=True, device=device)
                 waveform = torch.tensor(waveform)
                 waveform = torch.nan_to_num(waveform, nan=0)
-                output_path = os.path.join(output_root, 'denoised')
-            else:
-                output_path = output_root
 
             waveform.to(device)
             mel = mel_transform(waveform)
@@ -93,47 +94,6 @@ def preprocess_and_save_audio_in_tensors(denoise=False):
                 counter = 0
 
             # print(f"Saved: {rel_path} → {split}")
-
-
-def preprocess_and_split_noise(
-        seed=42,
-        split_ratios=(0.6, 0.2, 0.2)
-):
-    chunk_size = 16000
-    all_chunks = []
-    noise_dir = os.path.join(audio_root, "_background_noise_")
-    output_base_dir = os.path.join(output_root, "noise")
-
-    for file in Path(noise_dir).glob("*.wav"):
-        waveform, _ = torchaudio.load(file)
-        total_chunks = waveform.shape[1] // chunk_size
-        chunks = waveform[:, :total_chunks * chunk_size].split(chunk_size, dim=1)
-        all_chunks.extend(chunks)
-
-    torch.manual_seed(seed)
-    all_chunks = [chunk for chunk in all_chunks]
-    indices = torch.randperm(len(all_chunks)).tolist()
-
-    n_total = len(indices)
-    n_train = int(split_ratios[0] * n_total)
-    n_val = int(split_ratios[1] * n_total)
-
-    split_sets = {
-        'train': indices[:n_train],
-        'validation': indices[n_train:n_train + n_val],
-        'test': indices[n_train + n_val:]
-    }
-
-    for split_name, split_indices in split_sets.items():
-        out_dir = os.path.join(output_base_dir, split_name)
-        os.makedirs(out_dir, exist_ok=True)
-
-        for i, idx in enumerate(split_indices):
-            out_path = os.path.join(out_dir, f"noise_{i:05d}.pt")
-
-            torch.save(all_chunks[idx], out_path)
-
-        print(f"Zapisano {len(split_indices)} fragmentów do {out_dir}")
 
 
 def generate_dataset_with_optional_augmented_sample(

@@ -23,7 +23,7 @@ def get_pretrained_model():
     return model
 
 
-def train_model(model, optimizer, train_loader, val_loader, num_epochs=5, patience=3, verbose=False):
+def train_model(model, optimizer, train_loader, val_loader, num_epochs=20, patience=3, verbose=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     criterion = nn.CrossEntropyLoss()

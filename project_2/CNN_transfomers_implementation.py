@@ -110,7 +110,7 @@ class RawAudioTransformer(nn.Module):
         return x
 
 
-def train_transformer(model, optimizer, train_loader, val_loader, num_epochs=10, patience=3, verbose=False):
+def train_transformer(model, optimizer, train_loader, val_loader, num_epochs=20, patience=3, verbose=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = model.to(device)
