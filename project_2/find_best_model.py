@@ -33,7 +33,6 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
             print(columns)
             print(train_loss, train_acc, val_loss, val_acc)
             values.append([train_loss, train_acc, val_loss, val_acc])
-            save_to_csv("results/lr_"+model_type,columns,values)
             # update if it is better
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -41,6 +40,7 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
                 best_learning_rate = learning_rate
             
     
+    save_to_csv("results/lr_"+model_type,columns,values)
     columns = ["wd", "train_loss","train_acc", "val_loss","val_acc"]
     values = []
     for weights_decay in weights_decays:
@@ -57,13 +57,13 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
             print(columns)
             print(train_loss, train_acc, val_loss, val_acc)
             values.append([train_loss, train_acc, val_loss, val_acc])
-            save_to_csv("results/wd_"+model_type,columns,values)
             # update if it is better
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_model = model.state_dict()
                 best_weights_decay = weights_decay
-            
+    
+    save_to_csv("results/wd_"+model_type,columns,values)
     # return best model configuration, best learning rate and weights decay rate
     return model.load_state_dict(best_model), best_learning_rate, best_weights_decay
             
