@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from EfficientNet_implementation import get_pretrained_model, train_model, test_model
 from CNN_transfomers_implementation import Mel_transformer, train_transformer, evaluate_model
 from new_loader import TorchTensorFolderDataset
+import matplotlib.pyplot as plt
 
 def get_model(model_type):
     return get_pretrained_model() if model_type == "EfficientNet" else Mel_transformer()
@@ -159,9 +160,19 @@ def get_confusion_matrix(model, test_loader):
     all_predicted = torch.cat(all_predicted)
     all_labels = torch.cat(all_labels)
 
-    cm = confusion_matrix(all_labels, all_predicted)
-    
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(test_loader.dataset.class_to_idx.keys()))
-    disp.plot(cmap='Blues') 
+    cm = confusion_matrix(all_labels.cpu(), all_predicted.cpu())
+    labels = list(test_loader.dataset.class_to_idx.keys())
+
+    fig, ax = plt.subplots(figsize=(12, 12))  # większy wykres
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+    disp.plot(cmap='Oranges', ax=ax, colorbar=False, xticks_rotation=90)
+
+    # Usuń etykiety z zerami
+    for i in range(disp.text_.shape[0]):
+        for j in range(disp.text_.shape[1]):
+            if disp.text_[i, j] is not None and disp.text_[i, j].get_text() == '0':
+                disp.text_[i, j].set_text('')
+
+    plt.tight_layout()
 
     return

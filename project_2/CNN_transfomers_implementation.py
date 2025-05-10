@@ -176,10 +176,9 @@ def train_transformer(model, optimizer, train_loader, val_loader, num_epochs=20,
     if verbose:
         print(f"Best Val Acc: {best_val_acc:.4f}")
         
-    if best_model_state:
-        model.load_state_dict(best_model_state)
+    model.load_state_dict(best_model_state)
 
-    return model
+    return 
 
 
 def evaluate_model(model, test_loader):

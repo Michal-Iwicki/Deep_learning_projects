@@ -3,6 +3,7 @@ __pycache__/
 /project_1/models
 /project_1/data
 /project_2/data
+/project_3/data
 /project_2/models
 *.py[cod]
 *$py.class

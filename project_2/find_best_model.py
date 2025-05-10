@@ -4,7 +4,7 @@ from tester import get_loader,save_to_csv
 from CNN_transfomers_implementation import Mel_transformer, train_transformer, evaluate_model
 from EfficientNet_implementation import get_pretrained_model, train_model, test_model
 
-def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights_decays=[ 0.01, 0.001, 0.0001], times = 3, denoised=False):
+def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights_decays=[ 0.01, 0.001, 0.0001], times = 3, denoised=True):
     # retrive respective functions to train and to test model based on model's type
     train_f = train_model if model_type == "EfficientNet" else train_transformer
     test_f = test_model if model_type == "EfficientNet" else evaluate_model
@@ -26,14 +26,14 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
             
             # train model
-            train_f(model, optimizer, train_loader, val_loader)
+            train_f(model, optimizer, train_loader, val_loader, num_epochs=15)
             
             
             train_loss, train_acc = test_f(model, train_loader)
             val_loss, val_acc = test_f(model, val_loader)
             print(columns)
-            print(train_loss, train_acc, val_loss, val_acc)
-            values.append([train_loss, train_acc, val_loss, val_acc])
+            print(learning_rate,train_loss, train_acc, val_loss, val_acc)
+            values.append([learning_rate,train_loss, train_acc, val_loss, val_acc])
             # update if it is better
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -48,16 +48,16 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
         for i in range(times):
             # create respective model based on model's type and its optimizer
             model = get_pretrained_model() if model_type == "EfficientNet" else Mel_transformer()
-            optimizer = optim.AdamW(model.parameters(), lr=best_learning_rate, weights_decay=weights_decay)
+            optimizer = optim.AdamW(model.parameters(), lr=best_learning_rate, weight_decay=weights_decay)
             
             # train model
-            train_f(model, optimizer, train_loader, val_loader)
+            train_f(model, optimizer, train_loader, val_loader, num_epochs=15)
             
             train_loss, train_acc = test_f(model, train_loader)
             val_loss, val_acc = test_f(model, val_loader)
             print(columns)
-            print(train_loss, train_acc, val_loss, val_acc)
-            values.append([train_loss, train_acc, val_loss, val_acc])
+            print(weights_decay,train_loss, train_acc, val_loss, val_acc)
+            values.append([weights_decay,train_loss, train_acc, val_loss, val_acc])
             # update if it is better
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -66,5 +66,6 @@ def find_best_model(model_type, learning_rates=[0.001, 0.0001, 0.00001], weights
     
     save_to_csv("results/wd_"+model_type,columns,values)
     # return best model configuration, best learning rate and weights decay rate
-    return model.load_state_dict(best_model), best_learning_rate, best_weights_decay
+    model.load_state_dict(best_model)
+    return model, best_learning_rate, best_weights_decay
             
